@@ -96,7 +96,7 @@ python build.py
 pyinstaller --onefile --windowed --name HowSoon dist/HowSoon/howsoon.py
 ```
 
-`build.py` puts `ui.html` inside `howsoon.py`, so the finished script is a single file. The workflow in `.github/workflows/build.yml` builds all three systems on every push to `main`. Pushing a tag like `v1.0.0` also publishes them as a release.
+`build.py` puts `ui.html` inside `howsoon.py`, so the finished script is a single file. The workflow in `.github/workflows/build.yml` builds all three systems on every push to `main`. It also publishes them as the release for the current `APP_VERSION` in `howsoon.py`, so bumping that number and pushing ships a new version.
 
 ## Good to know
 
