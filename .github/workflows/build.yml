@@ -1,0 +1,72 @@
+name: Build How Soon
+
+# Builds a standalone app for Windows, macOS and Linux on every push.
+# Push a tag like v1.0.0 to also publish the builds as a GitHub release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: macos-14
+            name: macos
+          - os: ubuntu-22.04
+            name: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install -r requirements-build.txt
+
+      - name: Embed the UI
+        run: python build.py
+
+      - name: Build (Windows)
+        if: matrix.name == 'windows'
+        run: >
+          pyinstaller --noconfirm --onefile --windowed --uac-admin
+          --name HowSoon --icon assets/howsoon.ico
+          dist/HowSoon/howsoon.py
+          && Compress-Archive -Path dist/HowSoon.exe -DestinationPath HowSoon-windows.zip
+
+      - name: Build (macOS)
+        if: matrix.name == 'macos'
+        run: |
+          pyinstaller --noconfirm --windowed --name "How Soon" --icon assets/howsoon.icns \
+            --osx-bundle-identifier com.bradleywilliams.howsoon dist/HowSoon/howsoon.py
+          ditto -c -k --keepParent "dist/How Soon.app" HowSoon-macos.zip
+
+      - name: Build (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          pyinstaller --noconfirm --onefile --name howsoon dist/HowSoon/howsoon.py
+          mkdir -p pkg/HowSoon && cp dist/howsoon pkg/HowSoon/ && cp assets/howsoon-256.png pkg/HowSoon/howsoon.png
+          tar -C pkg -czf HowSoon-linux-x86_64.tar.gz HowSoon
+          cp dist/HowSoon.zip HowSoon-script.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HowSoon-${{ matrix.name }}
+          path: HowSoon-*
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: HowSoon-*
